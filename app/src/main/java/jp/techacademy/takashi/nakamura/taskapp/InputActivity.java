@@ -7,13 +7,14 @@ import android.app.TimePickerDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.DatePicker;
 import android.widget.EditText;
+import android.widget.Spinner;
 import android.widget.TimePicker;
-// import android.widget.Toolbar;   間違い
 
 import java.util.Calendar;
 import java.util.Date;
@@ -21,14 +22,52 @@ import java.util.GregorianCalendar;
 
 import io.realm.Realm;
 import io.realm.RealmResults;
+import io.realm.Sort;
 
 public class InputActivity extends AppCompatActivity {
 
+    public final static String EXTRA_CATEGORY = "jp.techacademy.takashi.nakamura.taskapp.CATEGORY";
+
+    private Realm mRealm;
     private int mYear, mMonth, mDay, mHour, mMinute;
-    private Button mDateButton, mTimeButton;
-    private EditText mTitleEdit, mContentEdit,mCategoryEdit;
+    private int mCategoryId;
+    private Button mDateButton, mTimeButton, mNewCategoryButton;
+    private EditText mTitleEdit, mContentEdit;
+    private Spinner mCategorySpinner;
+    private ArrayAdapter<String> mSpinnerAdapter;
     private Task mTask;
 
+    // spinner によるカテゴリの選択
+    private AdapterView.OnItemSelectedListener mItemSelectedListener = new AdapterView.OnItemSelectedListener() {
+        @Override
+        public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+            // 選択されたカテゴリのIDを取得
+            Spinner spinner = (Spinner) parent;
+            String category = (String) spinner.getSelectedItem();
+            mRealm = Realm.getDefaultInstance();
+            Category categoryResult = mRealm.where(Category.class).equalTo("category", category).findFirst();
+            mCategoryId = categoryResult.getId();
+            mRealm.close();
+        }
+
+        @Override
+        public void onNothingSelected(AdapterView<?> parent) {
+            // 何も選択されなかったときの処理
+//            mCategory = null; TODO
+        }
+    };
+
+    // カテゴリ新規作成ボタンの処理
+    private View.OnClickListener mOnNewCategoryClickListener = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            // インテントを作成してカテゴリ作成画面に遷移
+            Intent intent = new Intent(InputActivity.this, CategoryActivity.class);
+            startActivity(intent);
+        }
+    };
+
+    // 日付設定ボタンが押されたときの処理
     private View.OnClickListener mOnDateClickListener = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
@@ -47,6 +86,7 @@ public class InputActivity extends AppCompatActivity {
         }
     };
 
+    // 時間設定ボタンが押されたときの処理
     private View.OnClickListener mOnTimeClickListener = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
@@ -64,6 +104,7 @@ public class InputActivity extends AppCompatActivity {
         }
     };
 
+    // 決定ボタンが押されたときの処理
     private View.OnClickListener mOnDoneClickListener = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
@@ -72,37 +113,64 @@ public class InputActivity extends AppCompatActivity {
         }
     };
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_input);
 
-        // ActionBarを設定する
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        }
-
-        // UI部品の設定
+        // 日付設定ボタンの設定
         mDateButton = (Button) findViewById(R.id.date_button);
         mDateButton.setOnClickListener(mOnDateClickListener);
+
+        // 時刻設定ボタンの設定
         mTimeButton = (Button) findViewById(R.id.times_button);
         mTimeButton.setOnClickListener(mOnTimeClickListener);
+
+        // 決定ボタンの設定
         findViewById(R.id.done_button).setOnClickListener(mOnDoneClickListener);
+
+        // 新規カテゴリボタンの設定
+        mNewCategoryButton = (Button) findViewById(R.id.new_category_button);
+        mNewCategoryButton.setOnClickListener(mOnNewCategoryClickListener);
+
+        // EditTextの設定
         mTitleEdit = (EditText) findViewById(R.id.title_edit_text);
         mContentEdit = (EditText) findViewById(R.id.content_edit_text);
-        mCategoryEdit = (EditText) findViewById(R.id.category_edit_text_input);
 
-        // EXTRA_TASK から Task の id を取得して、id から Task のインスタンスを取得する
+        // CategorySpinnerの設定
+        mCategorySpinner = (Spinner) findViewById(R.id.category_spinner);
+        mCategorySpinner.setOnItemSelectedListener(mItemSelectedListener);
+
+        // SpinnerAdapterの設定
+//        mSpinnerAdapter = new ArrayAdapter<String>(InputActivity.this, android.R.layout.simple_spinner_item);
+//        mSpinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+
+        // Realmから登録済みのカテゴリを昇順ですべて取得する
+//        mRealm = Realm.getDefaultInstance();
+//        RealmResults<Category> results = mRealm.where(Category.class).findAllSorted("category", Sort.ASCENDING);
+
+        // すべてのカテゴリをSpinnerAdapterに追加する
+//        if (results.size() > 0) {
+//            for (Category category : results) {
+//                mSpinnerAdapter.add(category.getCategory());
+//            }
+//        }
+
+        // SpinnerAdapterをCategorySpinnerにセット
+//        mCategorySpinner.setAdapter(mSpinnerAdapter);
+
+
+        // MainActivity.EXTRA_TASKからTaskのidを取得して、idからTaskのインスタンスを取得する
+        // taskId = -1 のとき mTask = null となり、新規作成となる
         Intent intent = getIntent();
         int taskId = intent.getIntExtra(MainActivity.EXTRA_TASK, -1);
-        Realm realm = Realm.getDefaultInstance();
-        mTask = realm.where(Task.class).equalTo("id", taskId).findFirst();
-        realm.close();
+        mRealm = Realm.getDefaultInstance();
+        mTask = mRealm.where(Task.class).equalTo("id", taskId).findFirst();
+//        mRealm.close();
 
         if (mTask == null) {
-            // 新規作成の場合
+            // 新規作成の場合、現在日時を設定
             Calendar calender = Calendar.getInstance();
             mYear = calender.get(Calendar.YEAR);
             mMonth = calender.get(Calendar.MONTH);
@@ -110,12 +178,12 @@ public class InputActivity extends AppCompatActivity {
             mHour = calender.get(Calendar.HOUR_OF_DAY);
             mMinute = calender.get(Calendar.MINUTE);
         } else {
-            // 更新の場合
+            // 更新の場合、すでに登録されている値をEditTextと日時ボタンに表示
             mTitleEdit.setText(mTask.getTitle());
             mContentEdit.setText(mTask.getContents());
-            mCategoryEdit.setText(mTask.getCategory());
 
             Calendar calender = Calendar.getInstance();
+            calender.setTime(mTask.getDate());
             mYear = calender.get(Calendar.YEAR);
             mMonth = calender.get(Calendar.MONTH);
             mDay = calender.get(Calendar.DAY_OF_MONTH);
@@ -127,44 +195,84 @@ public class InputActivity extends AppCompatActivity {
             mDateButton.setText(dateString);
             mTimeButton.setText(timeString);
         }
+        mRealm.close();
+    } // end of onCreate
+
+    // CategoryActivityから戻ったとき、onCreate()が実行されていないので、
+    // onResume()でカテゴリをmSpinnerAdapterに登録しなおす
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        if (mSpinnerAdapter == null) {
+            // SpinnerAdapterがnullの場合、新規作成
+            mSpinnerAdapter = new ArrayAdapter<String>(InputActivity.this, android.R.layout.simple_spinner_item);
+            mSpinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        } else {
+            // nullでない場合、SpinnerAdapterをクリア
+            mSpinnerAdapter.clear();
+        }
+        // Realmからすべてのカテゴリを取得
+        mRealm = Realm.getDefaultInstance();
+        RealmResults<Category> results = mRealm.where(Category.class).findAllSorted("category", Sort.ASCENDING);
+        // すべてのカテゴリをSpinnerAdapterに登録しなおす
+        for (Category category: results) {
+            mSpinnerAdapter.add(category.getCategory());
+        }
+        // SpinnerAdapterをCategorySpinnerにセット
+        mCategorySpinner.setAdapter(mSpinnerAdapter);
+        mRealm.close();
     }
 
-    private void addTask() {
-        Realm realm = Realm.getDefaultInstance();
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        mRealm.close();
+    }
 
-        realm.beginTransaction();
+    // Task を追加するメソッド
+    private void addTask() {
+        mRealm = Realm.getDefaultInstance();
+        mRealm.beginTransaction();
 
         if (mTask == null) {
-            // 新規作成の場合
+            // タスクが新規作成の場合、新しいtaskIdを設定
             mTask = new Task();
-
-            RealmResults<Task> taskRealmResults = realm.where(Task.class).findAll();
-
+            RealmResults<Task> taskRealmResults = mRealm.where(Task.class).findAll();
             int identifier;
             if (taskRealmResults.max("id") != null) {
+                // 追加登録の場合
                 identifier = taskRealmResults.max("id").intValue() + 1;
             } else {
+                // 全く新規の登録の場合
                 identifier = 0;
             }
             mTask.setId(identifier);
         }
-
+        // タイトルを登録
         String title = mTitleEdit.getText().toString();
-        String content = mContentEdit.getText().toString();
-        String category = mCategoryEdit.getText().toString();
-
+        if (title.equals("")) {
+            // タイトルが入力されていない場合、Taskを追加しない
+            mRealm.cancelTransaction();
+            mRealm.close();
+            return;
+        }
         mTask.setTitle(title);
+        // コンテントを登録
+        String content = mContentEdit.getText().toString();
         mTask.setContents(content);
-        mTask.setCategory(category);
+        // カテゴリIDを登録
+        mTask.setCategoryId(mCategoryId);
+        // 日時を登録
         GregorianCalendar calendar = new GregorianCalendar(mYear, mMonth, mDay, mHour, mMinute);
         Date date = calendar.getTime();
         mTask.setDate(date);
+        // Realmに書き込み/更新
+        mRealm.copyToRealmOrUpdate(mTask);
+        mRealm.commitTransaction();
+        mRealm.close();
 
-        realm.copyToRealmOrUpdate(mTask);
-        realm.commitTransaction();
-
-        realm.close();
-
+        // PendingIntentを作成してアラームをセット
         Intent resultIntent = new Intent(getApplicationContext(), TaskAlarmReceiver.class);
         resultIntent.putExtra(MainActivity.EXTRA_TASK, mTask.getId());
         PendingIntent resultPendingIntent = PendingIntent.getBroadcast(
@@ -173,9 +281,8 @@ public class InputActivity extends AppCompatActivity {
                 resultIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT
         );
-
         AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
         alarmManager.set(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), resultPendingIntent);
-    }
+    } // End of addTask()
 
 }

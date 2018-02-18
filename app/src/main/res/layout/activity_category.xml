@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/new_category_text_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentStart="true"
+        android:textSize="18sp"
+        android:text="新規カテゴリの登録"/>
+
+    <EditText
+        android:id="@+id/new_category_edit_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/new_category_text_view"
+        android:hint="カテゴリ入力"/>
+    <Button
+        android:id="@+id/category_register_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/new_category_edit_text"
+        android:layout_toStartOf="@+id/category_close_button"
+        android:text="登録"/>
+
+    <Button
+        android:id="@+id/category_close_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/categories_text_view"
+        android:layout_alignParentEnd="true"
+        android:text="戻る" />
+
+    <TextView
+        android:id="@+id/categories_text_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/category_register_button"
+        android:layout_alignParentEnd="true"
+        android:textSize="18sp"
+        android:text="登録済みカテゴリ："/>
+
+    <android.support.design.widget.CoordinatorLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@+id/categories_text_view">
+
+        <ListView
+            android:id="@+id/category_list_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"/>
+
+    </android.support.design.widget.CoordinatorLayout>
+
+</RelativeLayout>

@@ -9,7 +9,7 @@ import io.realm.annotations.PrimaryKey;
 public class Task extends RealmObject implements Serializable {
     private String title;
     private String contents;
-    private String category;
+
     // クラス Date は年、月、日、時、分、秒、ミリ秒の値をあつかう
     // https://docs.oracle.com/javase/jp/6/api/java/util/Date.html
     private Date date;
@@ -18,52 +18,55 @@ public class Task extends RealmObject implements Serializable {
     @PrimaryKey
     private int id;
 
-    // タイトルの設定
+    // カテゴリのid
+    private int categoryId;
+
+    // タイトルの取得
     public String getTitle() {
         return title;
     }
 
-    // タイトルの取得
+    // タイトルの設定
     public void setTitle(String title) {
         this.title = title;
     }
 
-    // コンテンツの設定
+    // コンテンツの取得
     public String getContents() {
         return contents;
     }
 
-    // コンテンツの取得
+    // コンテンツの設定
     public void setContents(String contents) {
         this.contents = contents;
     }
 
-    // カテゴリーの設定
-    public String getCategory() {
-        return category;
+    // カテゴリのidの取得
+    public int getCategoryId() {
+        return categoryId;
     }
 
-    // カテゴリーの取得
-    public void setCategory(String category) {
-        this.category = category;
+    // カテゴリのidの設定
+    public void setCategoryId(int categoryId) {
+        this.categoryId = categoryId;
     }
 
-    // 日時の設定
+    // 日時の取得
     public Date getDate() {
         return date;
     }
 
-    // 日時の取得
+    // 日時の設定
     public void setDate(Date date) {
         this.date = date;
     }
 
-    // IDの設定
+    // IDの取得
     public int getId() {
         return id;
     }
 
-    // IDの取得
+    // IDの設定
     public void setId(int id) {
         this.id = id;
     }

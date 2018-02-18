@@ -26,10 +26,19 @@
             android:name=".InputActivity"
             android:label="タスク"
             android:parentActivityName=".MainActivity"
-            android:theme="@style/AppTheme.NoActionBar">
+            android:theme="@style/AppTheme">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="jp.techacademy.takashi.nakamura.taskapp.MainActivity"/>
+        </activity>
+        <activity
+            android:name=".CategoryActivity"
+            android:label="カテゴリ作成"
+            android:parentActivityName=".InputActivity"
+            android:theme="@style/AppTheme">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="jp.techacademy.takashi.nakamura.taskapp.InputActivity"/>
         </activity>
 
         <receiver android:name=".TaskAlarmReceiver"/>

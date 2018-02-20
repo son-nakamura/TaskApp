@@ -21,6 +21,7 @@ public class CategoryActivity extends AppCompatActivity {
     private ListView mListView;
     private CategoryAdapter mCategoryAdapter;
     private Realm mRealm;
+    // Realmにリスナーを設定
     private RealmChangeListener mRealmListener = new RealmChangeListener() {
         @Override
         public void onChange(Object o) {
@@ -54,14 +55,13 @@ public class CategoryActivity extends AppCompatActivity {
                 // 取得したテキストが空でないときのみ処理
                 if (!newCategory.equals("")) {
                     // 登録済みカテゴリとテキストが一致するものを探索
-                    Realm realm = Realm.getDefaultInstance();
-                    RealmResults<Category> results = realm.where(Category.class).equalTo("category", newCategory).findAll();
+                    RealmResults<Category> results = mRealm.where(Category.class)
+                            .equalTo("category", newCategory).findAll();
                     if (results.size() == 0) {
                         // 一致するものがないとき、カテゴリを登録
-//                        mCategory.setCategory(newCategory);
                         addCategory(newCategory);
                     } else {
-                        // 一致するものがあるとき、AlertDialog でユーザーに通知
+                        // 一致するものがあるとき、AlertDialogでユーザーに通知
                         AlertDialog.Builder builder = new AlertDialog.Builder(CategoryActivity.this);
                         builder.setTitle("登録できません");
                         builder.setMessage(newCategory + " はすでに登録されています");
@@ -95,13 +95,14 @@ public class CategoryActivity extends AppCompatActivity {
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
                 // カテゴリが使われているかチェック
-                // 引数で渡された id のカテゴリを取得
+                // 引数で渡されたカテゴリを取得
                 final Category category = (Category) parent.getAdapter().getItem(position);
-                // Taskの中からカテゴリの一致するものを取得
-                RealmResults<Task> TaskResults = mRealm.where(Task.class).equalTo("id", category.getId()).findAll();
+                // タスクの中からカテゴリの一致するものを取得
+                RealmResults<Task> taskResults = mRealm.where(Task.class)
+                        .equalTo("categoryId", category.getId()).findAll();
                 // 取得した結果をチェック
-                if (TaskResults.size() == 0) {
-                    // 一致するものがない場合、ダイアログを表示してユーザーに確認
+                if (taskResults.size() == 0) {
+                    // カテゴリーの一致するタスクがない場合、ダイアログを表示してユーザーに削除を確認
                     AlertDialog.Builder builder = new AlertDialog.Builder(CategoryActivity.this);
                     builder.setTitle("削除");
                     builder.setMessage(category.getCategory() + "を削除しますか");
@@ -109,9 +110,10 @@ public class CategoryActivity extends AppCompatActivity {
                     builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            RealmResults<Category> categoryResults = mRealm.where(Category.class).equalTo("id", category.getId()).findAll();
+                            Category categoryResult = mRealm.where(Category.class)
+                                    .equalTo("id", category.getId()).findFirst();
                             mRealm.beginTransaction();
-                            categoryResults.deleteAllFromRealm();
+                            categoryResult.deleteFromRealm();
                             mRealm.commitTransaction();
                             reloadListView();
                         }
@@ -126,8 +128,8 @@ public class CategoryActivity extends AppCompatActivity {
                     AlertDialog alertDialog = builder.create();
                     builder.show();
 
-                } else if (TaskResults.size() >= 1) {
-                    // 一致するものがある場合、まだそのカテゴリが使用されていることをダイアログで表示
+                } else if (taskResults.size() > 0) {
+                    // カテゴリーの一致するタスクがある場合、まだそのカテゴリが使用されていることをダイアログで表示
                     AlertDialog.Builder builder = new AlertDialog.Builder(CategoryActivity.this);
                     builder.setTitle("削除できません");
                     builder.setMessage("このカテゴリを使用している予定があります");
@@ -147,12 +149,14 @@ public class CategoryActivity extends AppCompatActivity {
 
     } // onCreate()の終わり
 
-    // CategoryActivityが消滅するときにRealmをクローズする
+
+    // onDestroy()でRealmをクローズ
     @Override
     protected void onDestroy() {
         super.onDestroy();
         mRealm.close();
     }
+
 
     // RealmからすべてのCategoryを取得して表示するメソッド
     private void reloadListView() {
@@ -166,15 +170,12 @@ public class CategoryActivity extends AppCompatActivity {
         mCategoryAdapter.notifyDataSetChanged();
     }
 
+
     // Category を追加するメソッド
     private void addCategory(String strCategory) {
-        Realm realm = Realm.getDefaultInstance();
-        RealmResults<Category> results = realm.where(Category.class).findAll();
-        int id;
-        if (results.size() == Category.ALL_CATEGORIES) {
-            // 何も登録されていない場合
-            id = Category.ALL_CATEGORIES + 1;
-        } else {
+        RealmResults<Category> results = mRealm.where(Category.class).findAll();
+        int id = Category.ALL_CATEGORIES + 1;    // 何も登録されていない場合 id = 1
+        if (results.size() > 0) {
             // 何か登録されている場合
             id = results.max("id").intValue() + 1;
         }
@@ -184,11 +185,10 @@ public class CategoryActivity extends AppCompatActivity {
         newCategory.setId(id);
         newCategory.setCategory(strCategory);
 
-        // realトランザクション
-        realm.beginTransaction();
-        realm.copyToRealmOrUpdate(newCategory);
-        realm.commitTransaction();
-        realm.close();
+        // Realトランザクション
+        mRealm.beginTransaction();
+        mRealm.copyToRealmOrUpdate(newCategory);
+        mRealm.commitTransaction();
     }
 
 }

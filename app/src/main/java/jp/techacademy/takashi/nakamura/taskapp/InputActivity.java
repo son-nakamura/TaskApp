@@ -44,16 +44,13 @@ public class InputActivity extends AppCompatActivity {
             // 選択されたカテゴリのIDを取得
             Spinner spinner = (Spinner) parent;
             String category = (String) spinner.getSelectedItem();
-            mRealm = Realm.getDefaultInstance();
             Category categoryResult = mRealm.where(Category.class).equalTo("category", category).findFirst();
             mCategoryId = categoryResult.getId();
-            mRealm.close();
         }
 
         @Override
         public void onNothingSelected(AdapterView<?> parent) {
-            // 何も選択されなかったときの処理
-//            mCategory = null; TODO
+            // 何も選択されなかったとき何もしない
         }
     };
 
@@ -66,6 +63,7 @@ public class InputActivity extends AppCompatActivity {
             startActivity(intent);
         }
     };
+
 
     // 日付設定ボタンが押されたときの処理
     private View.OnClickListener mOnDateClickListener = new View.OnClickListener() {
@@ -86,6 +84,7 @@ public class InputActivity extends AppCompatActivity {
         }
     };
 
+
     // 時間設定ボタンが押されたときの処理
     private View.OnClickListener mOnTimeClickListener = new View.OnClickListener() {
         @Override
@@ -103,6 +102,7 @@ public class InputActivity extends AppCompatActivity {
             timePickerDialog.show();
         }
     };
+
 
     // 決定ボタンが押されたときの処理
     private View.OnClickListener mOnDoneClickListener = new View.OnClickListener() {
@@ -142,32 +142,12 @@ public class InputActivity extends AppCompatActivity {
         mCategorySpinner = (Spinner) findViewById(R.id.category_spinner);
         mCategorySpinner.setOnItemSelectedListener(mItemSelectedListener);
 
-        // SpinnerAdapterの設定
-//        mSpinnerAdapter = new ArrayAdapter<String>(InputActivity.this, android.R.layout.simple_spinner_item);
-//        mSpinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-
-        // Realmから登録済みのカテゴリを昇順ですべて取得する
-//        mRealm = Realm.getDefaultInstance();
-//        RealmResults<Category> results = mRealm.where(Category.class).findAllSorted("category", Sort.ASCENDING);
-
-        // すべてのカテゴリをSpinnerAdapterに追加する
-//        if (results.size() > 0) {
-//            for (Category category : results) {
-//                mSpinnerAdapter.add(category.getCategory());
-//            }
-//        }
-
-        // SpinnerAdapterをCategorySpinnerにセット
-//        mCategorySpinner.setAdapter(mSpinnerAdapter);
-
-
         // MainActivity.EXTRA_TASKからTaskのidを取得して、idからTaskのインスタンスを取得する
         // taskId = -1 のとき mTask = null となり、新規作成となる
         Intent intent = getIntent();
         int taskId = intent.getIntExtra(MainActivity.EXTRA_TASK, -1);
         mRealm = Realm.getDefaultInstance();
         mTask = mRealm.where(Task.class).equalTo("id", taskId).findFirst();
-//        mRealm.close();
 
         if (mTask == null) {
             // 新規作成の場合、現在日時を設定
@@ -195,11 +175,11 @@ public class InputActivity extends AppCompatActivity {
             mDateButton.setText(dateString);
             mTimeButton.setText(timeString);
         }
-        mRealm.close();
     } // end of onCreate
 
-    // CategoryActivityから戻ったとき、onCreate()が実行されていないので、
-    // onResume()でカテゴリをmSpinnerAdapterに登録しなおす
+
+    // 他のActivityから遷移してきたとき、onCreate()が実行されていないので、
+    // onResume()でカテゴリをmSpinnerAdapterに登録する
     @Override
     protected void onResume() {
         super.onResume();
@@ -213,7 +193,6 @@ public class InputActivity extends AppCompatActivity {
             mSpinnerAdapter.clear();
         }
         // Realmからすべてのカテゴリを取得
-        mRealm = Realm.getDefaultInstance();
         RealmResults<Category> results = mRealm.where(Category.class).findAllSorted("category", Sort.ASCENDING);
         // すべてのカテゴリをSpinnerAdapterに登録しなおす
         for (Category category: results) {
@@ -221,18 +200,19 @@ public class InputActivity extends AppCompatActivity {
         }
         // SpinnerAdapterをCategorySpinnerにセット
         mCategorySpinner.setAdapter(mSpinnerAdapter);
-        mRealm.close();
     }
 
+
+    // onDestroy()でRealmをクローズ
     @Override
     protected void onDestroy() {
         super.onDestroy();
         mRealm.close();
     }
 
+
     // Task を追加するメソッド
     private void addTask() {
-        mRealm = Realm.getDefaultInstance();
         mRealm.beginTransaction();
 
         if (mTask == null) {
@@ -249,28 +229,30 @@ public class InputActivity extends AppCompatActivity {
             }
             mTask.setId(identifier);
         }
+
         // タイトルを登録
         String title = mTitleEdit.getText().toString();
         if (title.equals("")) {
             // タイトルが入力されていない場合、Taskを追加しない
-            mRealm.cancelTransaction();
-            mRealm.close();
             return;
         }
         mTask.setTitle(title);
+
         // コンテントを登録
         String content = mContentEdit.getText().toString();
         mTask.setContents(content);
+
         // カテゴリIDを登録
         mTask.setCategoryId(mCategoryId);
+
         // 日時を登録
         GregorianCalendar calendar = new GregorianCalendar(mYear, mMonth, mDay, mHour, mMinute);
         Date date = calendar.getTime();
         mTask.setDate(date);
+
         // Realmに書き込み/更新
         mRealm.copyToRealmOrUpdate(mTask);
         mRealm.commitTransaction();
-        mRealm.close();
 
         // PendingIntentを作成してアラームをセット
         Intent resultIntent = new Intent(getApplicationContext(), TaskAlarmReceiver.class);

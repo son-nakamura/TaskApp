@@ -47,7 +47,7 @@
         android:layout_height="wrap_content"
         android:layout_below="@+id/category_spinner"
         android:layout_alignParentEnd="true"
-        android:text="新規カテゴリ作成"/>
+        android:text="カテゴリ作成／削除"/>
     <Button
         android:id="@+id/date_button"
         android:layout_width="0dp"

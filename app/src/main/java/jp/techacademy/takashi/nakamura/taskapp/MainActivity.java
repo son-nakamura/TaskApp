@@ -23,7 +23,6 @@ public class MainActivity extends AppCompatActivity {
     public final static String EXTRA_TASK = "jp.techacademy.takashi.nakamura.taskapp.TASK";
 
     private Realm mRealm;
-//    private RealmChangeListener mRealmChangeListener;
     private Spinner mCategorySpinner;
     private ArrayAdapter<String> mSpinnerAdapter;
     private Task mTask;
@@ -31,13 +30,17 @@ public class MainActivity extends AppCompatActivity {
     private ListView mListView;
     private TaskAdapter mTaskAdapter;
 
-    // Realm に ChangeListener を設定(Realmが変更された場合、全Taskを表示)
+    // Spinnerで選択したカテゴリのID
+    private int mSelectedCategoryId = Category.ALL_CATEGORIES;
+
+    // Realm に ChangeListener を設定(Realmが変更された場合、選択されたTaskを表示)
     private RealmChangeListener mRealmListener= new RealmChangeListener() {
         @Override
         public void onChange(Object o) {
-            reloadAllListView();
+            reloadListView();
         }
     };
+
 
     // Spinnerによるカテゴリの選択と選択されたタスクの表示
     private AdapterView.OnItemSelectedListener mItemSelectedListener = new AdapterView.OnItemSelectedListener() {
@@ -48,33 +51,20 @@ public class MainActivity extends AppCompatActivity {
 
             if (category.equals(Category.ZENKATEGORI)) {
                 // 全カテゴリが選択された場合、すべてのタスクを抽出
-                reloadAllListView();
+                mSelectedCategoryId = Category.ALL_CATEGORIES;
             } else {
-                // 個々のカテゴリが選択された場合、Realmからカテゴリが一致するTaskを抽出
-                // 選択されたカテゴリのIDを取得
-                mRealm = Realm.getDefaultInstance();
-                Category categoryResult = mRealm.where(Category.class).equalTo("category", category).findFirst();
-                int categoryId = categoryResult.getId();
-                mRealm.close();
-                // 取得したカテゴリIDに一致するTaskをすべて抽出
-                mRealm = Realm.getDefaultInstance();
-//                RealmResults<Task> sortedResults = mRealm.where(Task.class).findAllSorted("date", Sort.ASCENDING);
-                RealmResults<Task> sortedResults = mRealm.where(Task.class).equalTo("categoryId", categoryId)
-                        .findAllSorted("date", Sort.ASCENDING);
-                // 抽出したTaskをTaskAdapterにセット
-                mTaskAdapter.setTaskList(mRealm.copyFromRealm(sortedResults));
-                mRealm.close();
-                // TaskAdapterをListviewにセット
-                mListView.setAdapter(mTaskAdapter);
-                // 表示の更新
-                mTaskAdapter.notifyDataSetChanged();
+                // 個々のカテゴリが選択された場合、選択されたカテゴリのIDを取得
+                Category categoryResult = mRealm.where(Category.class)
+                        .equalTo("category", category).findFirst();
+                mSelectedCategoryId = categoryResult.getId();
             }
+            // ListViewを更新して表示
+            reloadListView();
         }
 
         @Override
         public void onNothingSelected(AdapterView<?> parent) {
-            // 何も選択されなかったときの処理
-//            mCategory = null; TODO
+            // 何も選択されなかったとき何もしない
         }
     };
 
@@ -126,25 +116,20 @@ public class MainActivity extends AppCompatActivity {
             public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
 
                 // タスクを削除する
-
                 final Task task = (Task) parent.getAdapter().getItem(position);
 
                 // ダイアログを表示する
                 AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-
                 builder.setTitle("削除");
                 builder.setMessage(task.getTitle() + "を削除しますか");
                 builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-
-                        mRealm = Realm.getDefaultInstance();
-                        RealmResults<Task> results = mRealm.where(Task.class).equalTo("id", task.getId()).findAll();
+                        Task result = mRealm.where(Task.class)
+                                .equalTo("id", task.getId()).findFirst();
                         mRealm.beginTransaction();
-                        results.deleteAllFromRealm();
+                        result.deleteFromRealm();
                         mRealm.commitTransaction();
-                        mRealm.close();
-
 
                         Intent resultIntent = new Intent(getApplicationContext(), TaskAlarmReceiver.class);
                         PendingIntent resultPendingIntent = PendingIntent.getBroadcast(
@@ -158,7 +143,7 @@ public class MainActivity extends AppCompatActivity {
                         alarmManager.cancel(resultPendingIntent);
 
                         // ListVewの再表示
-                        reloadAllListView();
+                        reloadListView();
                     }
                 });
                 builder.setNegativeButton("CANCEL", null);
@@ -169,12 +154,11 @@ public class MainActivity extends AppCompatActivity {
                 return true;
             }
         });
-        // 全タスクの再表示
-//        reloadAllListView();
     } // End of onCreate()
 
+
     // InputActivityから戻ったとき、onCreate()が実行されないので、
-    // onResume()でカテゴリをmSpinnerに登録しなおし、全タスクを表示
+    // onResume()でカテゴリをmSpinnerに登録し全タスクを表示
     @Override
     protected void onResume() {
         super.onResume();
@@ -190,37 +174,43 @@ public class MainActivity extends AppCompatActivity {
         // 「全カテゴリ」をSpinnerAdapterの先頭に登録
         mSpinnerAdapter.add(Category.ZENKATEGORI);
         // Realmからすべての登録済みカテゴリを取得
-        mRealm = Realm.getDefaultInstance();
-        RealmResults<Category> results = mRealm.where(Category.class).findAllSorted("category", Sort.ASCENDING);
+        RealmResults<Category> results = mRealm.where(Category.class)
+                .findAllSorted("category", Sort.ASCENDING);
+        // 取得したカテゴリをSpinnerAdapterに登録
         for (Category category: results) {
             mSpinnerAdapter.add(category.getCategory());
         }
         // SpinnerAdapterをCategorySpinnerにセット
         mCategorySpinner.setAdapter(mSpinnerAdapter);
-        mRealm.close();
         // 全タスクを表示
-        reloadAllListView();
+        mSelectedCategoryId = Category.ALL_CATEGORIES;
+        reloadListView();
     }
 
-    // MainActivityが破棄されるときにRealmをクローズする
+
+    // onDetroy()でRealmをクローズ
     @Override
     protected void onDestroy() {
         super.onDestroy();
         mRealm.close();
     }
 
-    // Realmデータベースから全てのTaskを取得し、ListView用のアダプタに渡すメソッド
-    private void reloadAllListView() {
-        // Realmデータベースから、「全てのデータを取得して新し日時順に並べた」結果を取得
-        mRealm = Realm.getDefaultInstance();
-        RealmResults<Task> taskRealmResults = mRealm.where(Task.class).findAllSorted("date", Sort.DESCENDING);
-        // 上記の結果を、TaskList としてセットする
-        if (taskRealmResults.size() > 0) {
-            mTaskAdapter.setTaskList(mRealm.copyFromRealm(taskRealmResults));
-            // TaskのListView用のアダプタに渡す
-            mListView.setAdapter(mTaskAdapter);
+    // Realmデータベースから選択されたTaskを取得し、ListView用のアダプタに渡すメソッド
+    private void reloadListView() {
+        RealmResults<Task> taskRealmResults;
+        if (mSelectedCategoryId == Category.ALL_CATEGORIES) {
+            // Realmデータベースから、「全てのデータを取得して日時順に並べた」結果を取得
+            taskRealmResults = mRealm.where(Task.class).findAllSorted("date", Sort.ASCENDING);
+        } else {
+            // Realmデータベースから、「選択されたデータを取得して日時順に並べた」結果を取得
+            taskRealmResults = mRealm.where(Task.class)
+                    .equalTo("categoryId", mSelectedCategoryId)
+                    .findAllSorted("date", Sort.ASCENDING);
         }
-        mRealm.close();
+        // 上記の結果を、TaskList としてセットする
+        mTaskAdapter.setTaskList(mRealm.copyFromRealm(taskRealmResults));
+        // TaskのListView用のアダプタに渡す
+        mListView.setAdapter(mTaskAdapter);
         // 表示を更新するために、アダプターにデータが変更されたことを知らせる
         mTaskAdapter.notifyDataSetChanged();
     }
